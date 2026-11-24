@@ -1,0 +1,65 @@
+
+import os
+import re
+from telegram import Update
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    MessageHandler,
+    ContextTypes,
+    filters
+)
+
+TOKEN = os.environ["BOT_TOKEN"]
+BASE_URL = os.environ["RENDER_EXTERNAL_URL"].rstrip("/")
+WEBHOOK_SECRET = os.environ["WEBHOOK_SECRET"]
+PORT = int(os.environ.get("PORT", 10000))
+WEBHOOK_PATH = "telegram-webhook"
+
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "Salom! Instagram havolasini yuboring."
+    )
+
+
+async def convert_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text or ""
+
+    match = re.search(
+        r"https?://(?:www\.)?instagram\.com/([^\s]+)",
+        text,
+        re.IGNORECASE
+    )
+
+    if match:
+        path = match.group(1).rstrip("/")
+        await update.message.reply_text(
+            "https://kkclip.com/" + path + "/"
+        )
+    else:
+        await update.message.reply_text(
+            "Instagram havolasi topilmadi."
+        )
+
+
+def main():
+    app = Application.builder().token(TOKEN).build()
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND, convert_link)
+    )
+
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        url_path=WEBHOOK_PATH,
+        webhook_url=f"{BASE_URL}/{WEBHOOK_PATH}",
+        secret_token=WEBHOOK_SECRET,
+        drop_pending_updates=True
+    )
+
+
+if __name__ == "__main__":
+    main()
